@@ -35,8 +35,8 @@ class Blockchain {
     }
 
     addBlock (newBlock) {
-        newBlock.previousHash = this.getLatestBlock().hash;     // Get the has of the previous block.
-        newBlock.hash = newBlock.calculateHash();               // Calculate hash for new block.
+        newBlock.previousHash = this.getLatestBlock().hash;
+        newBlock.hash = newBlock.calculateHash();
         this.chain.push(newBlock);
     }
     
