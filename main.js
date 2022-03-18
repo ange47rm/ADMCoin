@@ -1,16 +1,24 @@
 const SHA256 = require('crypto-js/sha256');
 
+class Transacton {
+
+    constructor(fromAddress, toAddress, amount) {
+        // In the real world, addresses are the public keys of cryptocurrency wallets
+        this.fromAddress = fromAddress;
+        this.toAddress = toAddress;
+        this.amount = amount;
+    }
+}
+
 class Block {
 
-    // Index: where the block sits on the chain
     // Timestamp: when the block was created
-    // Data: any type of data (for currency it could be transaction details: money sent, sender, recipient)
+    // Transactions: array of transactions
     // PreviousHash: hash of the previous block 
     // Nonce: Same properties within the block, will generate the same hash. When mining a new block, the nonce number allows the calculated hash value to always be different as it increases.
-    constructor(index, timestamp, data, previousHash = '') {
-        this.index = index;
+    constructor(timestamp, transactions, previousHash = '') {
         this.timestamp = timestamp;
-        this.data = data;
+        this.transactions = transactions;
         this.previousHash = previousHash;
         this.hash = this.calculateHash();
         this.nonce = 0;
@@ -33,26 +41,57 @@ class Block {
 
 // Potential issue: if data in a block is changed, hashes of all blocks could be recalculated and the blockchain would be valid.
 // Proof-of-work/mining can prevent that from happening by delaying the calculation of blocks' hash values, implementing a "difficulty" value.
+// Bitcoin uses PoW to ensure only one block is created every 10 minutes.
 class Blockchain {
 
     constructor() {
         this.chain = [this.createGenesisBlock()];
-        this.difficulty = 5;    // Determines how "difficult"/fast new block can be added to the blockchain.
+        this.difficulty = 2;            // Determines how "difficult"/fast new block can be added to the blockchain.
+        this.pendingTransactions = [];  // As blocks are mined one at a time, every X minutes, pending transactions are stored here.
+        this.miningReward = 100;        // Coin reward if a new block is successfully mined.
     }
 
     // The first block (Genesis block) must be created manually
     createGenesisBlock() {
-        return new Block(0, '17/03/2022', "Genesis Block", "N/A");
+        return new Block('17/03/2022', "Genesis Block", "N/A");
     }
 
     getLatestBlock() {
         return this.chain[this.chain.length - 1];
     }
 
-    addBlock(newBlock) {
-        newBlock.previousHash = this.getLatestBlock().hash;
-        newBlock.mineBlock(this.difficulty);
-        this.chain.push(newBlock);
+    // addBlock(newBlock) {
+    //     newBlock.previousHash = this.getLatestBlock().hash;
+    //     newBlock.mineBlock(this.difficulty);
+    //     this.chain.push(newBlock);
+    // }
+
+    minePendingTransactions(miningRewardAddress) {
+        // Mines a block and stores transactions to the blockchain.
+        let block = new Block(Date.now(), this.pendingTransactions); // Realistically, as there are so many pending transactions, miners can which transaction to include. They're not all processed as we're doing here.
+        block.mineBlock(this.difficulty);
+        console.log('Block successfully mined!');
+        this.chain.push(block);
+        this.pendingTransactions = [new Transacton(null, miningRewardAddress, this.miningReward)]; // The mining reward is sent only after the next block is mined, not after each block.
+    }
+
+    createTransaction(transaction) {
+        this.pendingTransactions.push(transaction);
+    }
+
+    getAddressBalance(address) {
+        let balance = 0;
+        for (const block of this.chain) {
+            for (const trans of block.transactions) {
+                if (trans.fromAddress === address) {
+                    balance -= trans.amount;
+                }
+                if (trans.toAddress === address) {
+                    balance += trans.amount;
+                }
+            }
+        }
+        return balance;
     }
 
     // After a block is added it cannot be changed without invalidating the rest of the chain. 
@@ -85,26 +124,16 @@ class Blockchain {
 
 let admCoin = new Blockchain();
 
-console.log(JSON.stringify(admCoin, null, 4));
+admCoin.createTransaction(new Transacton('address1', 'address2', 200));
+admCoin.createTransaction(new Transacton('address2', 'address1', 40));
+// These transactions are added to the pending transactions array of the blockchain.
 
-console.log(`Mining block #${admCoin.getNewBlockIndex()}`);
-admCoin.addBlock(new Block(admCoin.getNewBlockIndex(), '08/05/1991', { sender: 'Mario', recipient: 'Luigi', amount: 47 }));
+console.log('\nStarting the miner...');
+admCoin.minePendingTransactions('angelos-address');
 
-console.log(`Mining block #${admCoin.getNewBlockIndex()}`);
-admCoin.addBlock(new Block(admCoin.getNewBlockIndex(), '10/05/1991', { sender: 'Scorpion', recipient: 'Sub-Zero', amount: 74 }));
+console.log('\nBalance of Angelo is', admCoin.getAddressBalance('angelos-address'));
 
-// TESTS
-console.log(JSON.stringify(admCoin, null, 4));
+console.log('\nStarting the miner again...');
+admCoin.minePendingTransactions('angelos-address');
 
-// // Verify blockchain validity.
-// console.log('Is blockchain valid? ', admCoin.isChainValid());
-
-// // Tamper with block #1 by changing data in one block.
-// console.log("Changed block #1's data and recalculated hash.");
-// admCoin.chain[1].data = { sender: 'Scorpion', recipient: 'Sub-Zero', amount: 1074};
-// admCoin.chain[1].hash = admCoin.chain[1].calculateHash();
-// // Block 2 will have a previousHash value that'll be different from the recalculated one.
-
-// // Verify blockchain validity.
-// console.log('Is blockchain valid? ', admCoin.isChainValid());
-
+console.log('\nBalance of Angelo is', admCoin.getAddressBalance('angelos-address'));
