@@ -1,6 +1,5 @@
-const {Blockchain} = require ('./Blockchain');
-const {Transaction} = require ('./Transaction');
-const {Block} = require ('./Block');
+const {Blockchain} = require('./Blockchain');
+const {Transaction} = require('./Blockchain');
 
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
@@ -22,5 +21,3 @@ console.log('\nBalance of Angelo is', admCoin.getAddressBalance(myWalletAddress)
 admCoin.chain[1].transactions[0].amount = 1; // Changes amount of a previous transaction, invalidating the chain.
 
 console.log("Is chain valid?", admCoin.isChainValid());
-
-

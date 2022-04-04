@@ -2,13 +2,12 @@
   "name": "admcoin",
   "version": "1.0.0",
   "description": "Simple Blockchain implementation in Javascript. Credits to SavJee for guidance.",
-  "type": "module",
   "keywords": [
     "blockchain",
     "transactions",
     "admcoin"
   ],
-  "main": "src/main.js",
+  "main": "src/blockchain.js",
   "scripts": {
     "test": "nyc mocha tests/*.js",
     "lint": "eslint src/** tests/**",

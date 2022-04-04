@@ -1,10 +1,8 @@
 // Potential issue: if data in a block is changed, hashes of all blocks could be recalculated and the blockchain would be valid.
 // Proof-of-work/mining can prevent that from happening by delaying the calculation of blocks' hash values, implementing a "difficulty" value.
-
-const { Transaction } = require('./Transaction');
-const { Block } = require('./Block');
-
 // Bitcoin uses PoW to ensure only one block is created every 10 minutes.
+
+const SHA256 = require('crypto-js/sha256');
 class Blockchain {
 
     constructor() {
@@ -105,8 +103,88 @@ class Blockchain {
     }
 }
 
-module.exports.Blockchain = Blockchain;
 
-// TODO
-// Implement a mechanism to rollback to a valid state, if the blockchain becomes invalid
-// This can happen when adding a new block the wrong way potentially / adding a new block / tampering with existing block data.
+
+
+class Block {
+
+    // Timestamp: when the block was created
+    // Transactions: array of transactions
+    // PreviousHash: hash of the previous block 
+    // Nonce: Same properties within the block, will generate the same hash. When mining a new block, the nonce number allows the calculated hash value to always be different as it increases.
+    constructor(timestamp, transactions, previousHash = '') {
+        this.timestamp = timestamp;
+        this.transactions = transactions;
+        this.previousHash = previousHash;
+        this.hash = this.calculateHash();
+        this.nonce = 0;
+    }
+
+    calculateHash() {
+        return SHA256(this.index + this.previousHash + this.timestamp + JSON.stringify(this.data) + this.nonce).toString();
+    }
+
+    // The below methods defines how much computing power is required to create a new block.
+    // If difficulty is set to 5, it means that the loop will run until the hash of the new block begins with 5 '0's and so on.
+    mineBlock(difficulty) {
+        while (this.hash.substring(0, difficulty) !== Array(difficulty + 1).join('0')) {
+            this.nonce++;
+            this.hash = this.calculateHash();
+        }
+        console.log('Block mined: ' + this.hash);
+    }
+
+    hasValidTransactions(){
+        for (const transaction of this.transactions){
+            if (!transaction.isTransactionValid()) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+
+
+const EC = require('elliptic').ec;
+const ec = new EC('secp256k1');
+
+class Transaction {
+
+    constructor(fromAddress, toAddress, amount) {
+        // In the real world, addresses are the public keys of cryptocurrency wallets
+        this.fromAddress = fromAddress;
+        this.toAddress = toAddress;
+        this.amount = amount;
+    }
+
+    calculateTransactionHash() {
+        return SHA256(this.fromAddress + this.toAddress + this.amount).toString();
+    }
+
+    signTransaction(signingKey) {
+        // The fromAddress of the transaction has to be equal to the public key.
+        if (signingKey.getPublic('hex') !== this.fromAddress) {
+            throw new Error('You cannot sign transaction for other wallets!');
+        }
+
+        const transactionHash = this.calculateTransactionHash();
+        const signature = signingKey.sign(transactionHash, 'base64');
+        this.signature = signature.toDER('hex');
+    }
+
+    isTransactionValid() {
+        if (this.fromAddress === null) return true;                                     // for mining rewards transactions (that are never signed).
+
+        if(!this.signature || this.signature.length === 0){
+            throw new Error('No signature in this transaction!')
+        }
+
+        const publicKey = ec.keyFromPublic(this.fromAddress, 'hex');                    // Extract public key from the transaction's signature.
+        return publicKey.verify(this.calculateTransactionHash(), this.signature);       // Verify that the transaction has been signed by that public key.
+    }
+}
+
+module.exports.Blockchain = Blockchain;
+module.exports.Transaction = Transaction;
+module.exports.Block = Block;
