@@ -7,6 +7,7 @@
     "transactions",
     "admcoin"
   ],
+  "main": "src/blockchain.js",
   "scripts": {
     "test": "nyc mocha tests/*.js",
     "lint": "eslint src/** tests/**",
